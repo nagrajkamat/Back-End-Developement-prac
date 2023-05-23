@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Firebase RealTime Chat</title>
+    <link rel="stylesheet" href="./index.css" />
+  </head>
+  <>
+    <header>
+      <h2>RT ChatApp</h2>
+    </header>
+
+    <div id="chat">
+      <!-- messages will display here -->
+      <ul id="messages"></ul>
+
+      <!-- form to send message -->
+      <form id="message-form">
+        <input id="message-input" type="text" />
+        <button id="message-btn" type="submit">Send</button>
+      </form>
+    </div>
+    <!-- scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js"></script>
+    <script src="index.js"></script>
+
+    <!-- Google Authentication -->
+<script src=”/__/firebase/9.22.0/firebase-app.js”></script>
+<script src=”/__/firebase/9.22.0/firebase-auth.js”></script>
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Chatroom App</title>
+    <!-- Include the Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js"></script>
+
+    <script>
+      // Initialize Firebase
+      const firebaseConfig = {
+        // Your Firebase config here
+      };
+      firebase.initializeApp(firebaseConfig);
+
+      // Firebase authentication
+      const auth = firebase.auth();
+      let currentUser = null;
+
+      // Firebase Realtime Database
+      const database = firebase.database();
+
+      // Join a room
+      function joinRoom(roomName) {
+        // Get the current user's UID
+        const uid = currentUser.uid;
+
+        // Set the user's UID as the value in the room node
+        database.ref(`rooms/${roomName}/${uid}`).set(true)
+          .then(() => {
+            console.log(`Joined room: ${roomName}`);
+          })
+          .catch((error) => {
+            console.error(`Error joining room: ${error.message}`);
+          });
+      }
+
+      // Leave a room
+      function leaveRoom(roomName) {
+        // Get the current user's UID
+        const uid = currentUser.uid;
+
+        // Remove the user's UID from the room node
+        database.ref(`rooms/${roomName}/${uid}`).remove()
+          .then(() => {
+            console.log(`Left room: ${roomName}`);
+          })
+          .catch((error) => {
+            console.error(`Error leaving room: ${error.message}`);
+          });
+      }
+
+      // Create a private room
+      function createRoom(roomName) {
+        // Create a new room node with the provided room name
+        database.ref(`rooms/${roomName}`).set(true)
+          .then(() => {
+            console.log(`Created room: ${roomName}`);
+          })
+          .catch((error) => {
+            console.error(`Error creating room: ${error.message}`);
+          });
+      }
+
+      // Firebase Authentication state change listener
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          // User is signed in
+          currentUser = user;
+        } else {
+          // User is signed out
+          currentUser = null;
+        }
+      });
+
+      // Sign in anonymously
+      function signInAnonymously() {
+        auth.signInAnonymously()
+          .then(() => {
+            console.log('Signed in anonymously');
+          })
+          .catch((error) => {
+            console.error(`Error signing in anonymously: ${error.message}`);
+          });
+      }
+
+      // Send a message
+      function sendMessage(roomName) {
+        const messageInput = document.getElementById('messageInput');
+        const message = messageInput.value.trim();
+
+        if (message !== '') {
+          // Get the current user's UID
+          const uid = currentUser.uid;
+
+          // Create a new message node under the room node
+          database.ref(`rooms/${roomName}/messages`).push({
+            uid: uid,
+            message: message
+          });
+
+          // Clear the input field
+          messageInput.value = '';
+        }
+      }
+
+      // Display messages in the chatroom
+      function displayMessages(roomName) {
+        const messagesList = document.getElementById('messagesList');
+
+        // Clear existing messages
+        messagesList.innerHTML = '';
+
+        // Retrieve messages from the room node
+        database.ref(`rooms/${roomName}/messages`).on('child_added', (snapshot) => {
+          const messageData = snapshot.val();
+          const { uid, message } = messageData;
+
+          // Get the username based on the UID (e.g., you can store username information in another node)
+          const username = uid === currentUser.uid ? 'You' : 'Other User';
+
+          // Create a new list item to display the message
+          const listItem = document.createElement('li');
+          listItem.innerText = `${username}: ${message}`;
+
+          // Append the list item to the messages list
+          messagesList.appendChild(listItem);
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <h1>Chatroom App</h1>
+
+    <button onclick="signInAnonymously()">Sign In Anonymously</button>
+
+    <div>
+      <h2>Join Room</h2>
+      <input type="text" id="joinRoomInput" placeholder="Room Name" />
+      <button onclick="joinRoom(joinRoomInput.value)">Join</button>
+    </div>
+
+    <div>
+      <h2>Leave Room</h2>
+      <input type="text" id="leaveRoomInput" placeholder="Room Name" />
+      <button onclick="leaveRoom(leaveRoomInput.value)">Leave</button>
+    </div>
+
+    <div>
+      <h2>Create Room</h2>
+      <input type="text" id="createRoomInput" placeholder="Room Name" />
+      <button onclick="createRoom(createRoomInput.value)">Create</button>
+    </div>
+
+    <div>
+      <h2>Chatroom</h2>
+      <input type="text" id="messageInput" placeholder="Type a message..." />
+      <button onclick="sendMessage(joinRoomInput.value)">Send</button>
+      <ul id="messagesList"></ul>
+    </div>
+    
+    <script>
+      // Listen for changes in the joinRoomInput field and automatically update the leaveRoomInput field
+      document.getElementById('joinRoomInput').addEventListener('input', (event) => {
+        document.getElementById('leaveRoomInput').value = event.target.value;
+      });
+
+      // Listen for changes in the createRoomInput field and automatically update the joinRoomInput field
+      document.getElementById('createRoomInput').addEventListener('input', (event) => {
+        document.getElementById('joinRoomInput').value = event.target.value;
+      });
+
+      // Display messages when the join button is clicked
+      document.getElementById('joinRoomInput').addEventListener('change', (event) => {
+        const roomName = event.target.value;
+        displayMessages(roomName);
+      });
+    </script>
+  </body>
+</html>
+<! -- RealTime messages -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Real-time Chat</title>
+    <!-- Include the Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database.js"></script>
+    <script>
+      // Initialize Firebase
+      const firebaseConfig = {
+        // Your Firebase config here
+      };
+      firebase.initializeApp(firebaseConfig);
+
+      const database = firebase.database();
+
+      // Send message
+      function sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        const message = messageInput.value.trim();
+
+        if (message !== '') {
+          const chatRef = database.ref('chatroom');
+
+          // Push a new message to the chatroom node
+          chatRef.push().set({
+            message: message
+          });
+
+          // Clear the input field
+          messageInput.value = '';
+        }
+      }
+
+      // Display messages in real-time
+      function displayMessages() {
+        const chatRef = database.ref('chatroom');
+
+        chatRef.on('child_added', (snapshot) => {
+          const message = snapshot.val().message;
+
+          const messageElement = document.createElement('p');
+          messageElement.innerText = message;
+
+          const chatContainer = document.getElementById('chatContainer');
+          chatContainer.appendChild(messageElement);
+        });
+      }
+    </script>
+  </head>
+  <body onload="displayMessages()">
+    <h1>Real-time Chat</h1>
+
+    <div id="chatContainer"></div>
+
+    <input type="text" id="messageInput" placeholder="Type a message..." />
+    <button onclick="sendMessage()">Send</button>
+  </body>
+</html>
+
+
+<! -- To Store Messages in Database -- >
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Real-time Chat</title>
+    <!-- Include the Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database.js"></script>
+    <script>
+      // Initialize Firebase
+      const firebaseConfig = {
+        // Your Firebase config here
+      };
+      firebase.initializeApp(firebaseConfig);
+
+      const database = firebase.database();
+
+      // Send message
+      function sendMessage(roomName) {
+        const messageInput = document.getElementById('messageInput');
+        const message = messageInput.value.trim();
+
+        if (message !== '') {
+          const chatRef = database.ref(`chatrooms/${roomName}`);
+
+          // Push a new message to the chatroom node
+          chatRef.push().set({
+            message: message
+          });
+
+          // Clear the input field
+          messageInput.value = '';
+        }
+      }
+
+      // Display messages in real-time
+      function displayMessages(roomName) {
+        const chatRef = database.ref(`chatrooms/${roomName}`);
+
+        chatRef.on('child_added', (snapshot) => {
+          const message = snapshot.val().message;
+
+          const messageElement = document.createElement('p');
+          messageElement.innerText = message;
+
+          const chatContainer = document.getElementById('chatContainer');
+          chatContainer.appendChild(messageElement);
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <h1>Real-time Chat</h1>
+
+    <div id="chatContainer"></div>
+
+    <input type="text" id="messageInput" placeholder="Type a message..." />
+    <button onclick="sendMessage('room1')">Send</button>
+
+    <script>
+      // Call the displayMessages function when the page loads or when a user joins a room
+      window.onload = function() {
+        displayMessages('room1'); // Replace 'room1' with the actual room name
+      }
+    </script>
+  </body>
+</html>
+
+</body>
+</html>
